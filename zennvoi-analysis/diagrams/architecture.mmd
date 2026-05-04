@@ -1,0 +1,43 @@
+%% Zennvoi — System Architecture
+%% Trust boundaries shown as dashed subgraphs.
+%% Render: paste into https://mermaid.live → export SVG → save as architecture.svg
+
+flowchart LR
+  user([User Browser])
+  client_recipient([Invoice Recipient<br/>email + Stripe Checkout])
+
+  subgraph app[Application — TypeScript Next.js on serverless]
+    fe[Client Components<br/>React 19 + RHF + Zod]
+    api[API Routes<br/>privileged ops only]
+    pdf[PDF Render<br/>react-pdf]
+  end
+
+  subgraph data[Data Plane]
+    db[(Postgres<br/>+ Row-Level Security<br/>+ defense triggers)]
+    storage[(Object Storage<br/>user logos)]
+  end
+
+  subgraph external[External Services]
+    stripe[Stripe + Stripe Connect<br/>subscriptions + per-user payouts]
+    email[Transactional Email API]
+    cron[Scheduled Job Runner<br/>4 daily jobs]
+  end
+
+  user -- HTTPS<br/>HSTS + CSP headers --> fe
+  fe -- DB client<br/>session JWT, RLS-scoped --> db
+  fe -- form submit<br/>CSRF-checked --> api
+
+  api -- service-role<br/>scoped by user_id --> db
+  api -- create checkout<br/>+ Connect payouts --> stripe
+  stripe -- signed webhook<br/>+ ownership double-check --> api
+  api -- send mail<br/>HTML-escaped --> email
+  api -- render request --> pdf
+  pdf -. read assets .-> storage
+  email -- delivers --> client_recipient
+  client_recipient -- pays via --> stripe
+
+  cron -- Bearer-secret call --> api
+  api -. file ops .-> storage
+
+  classDef boundary stroke-dasharray: 5 5
+  class app,data,external boundary

@@ -1,0 +1,54 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Internal-only notes (vendor names, exact code refs, unfixed-issue specifics)
+# These exist for the author's reference and MUST NOT be published.
+**/internal-notes.md
+**/*.local.md
+**/red-team-report.md
+**/red-team-*.md
+**/zennvoi-stack-interview.md
+
+# Reverse engineering scratch (don't commit raw binaries unless intentional)
+*.bin.scratch
+*.exe.scratch
+ghidra_projects/
+*.gpr.lock~

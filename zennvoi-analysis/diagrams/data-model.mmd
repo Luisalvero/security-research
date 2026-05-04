@@ -1,0 +1,86 @@
+%% Zennvoi — Core Data Model (ERD)
+%% RLS key on every table = user_id (or id on profiles).
+%% Single-user-per-account model — no workspaces/orgs.
+%% Render: paste into https://mermaid.live → export SVG → save as data-model.svg
+
+erDiagram
+    PROFILES ||--o{ CLIENTS : owns
+    PROFILES ||--o{ DOCUMENTS : owns
+    PROFILES ||--o{ SERVICES : owns
+    PROFILES ||--o{ RECURRING : owns
+    PROFILES ||--o{ REMINDERS : owns
+    PROFILES ||--o{ REFUND_REQUESTS : files
+    PROFILES ||--o{ FEEDBACK : submits
+    CLIENTS ||--o{ DOCUMENTS : "billed/quoted to"
+    DOCUMENTS ||--o{ RECURRING : "templates"
+    DOCUMENTS ||--o{ REMINDERS : "scheduled for"
+
+    PROFILES {
+        uuid id PK "= auth.users.id (RLS key)"
+        text email
+        text role "user|admin (trigger-protected)"
+        text plan "free|pro|studio (trigger-protected)"
+        text stripe_customer_id
+        text stripe_subscription_id
+        text stripe_connect_id
+        timestamptz gifted_plan_expires_at
+        int documents_this_month "free-plan counter"
+    }
+
+    CLIENTS {
+        uuid id PK
+        uuid user_id FK "RLS key"
+        text name
+        text email
+    }
+
+    DOCUMENTS {
+        uuid id PK
+        uuid user_id FK "RLS key"
+        text type "invoice|quote"
+        text status "draft|sent|paid|overdue|...|converted"
+        text number "user-prefixed"
+        uuid client_id FK
+        date issue_date
+        date due_date
+        jsonb line_items
+        numeric total
+    }
+
+    SERVICES {
+        uuid id PK
+        uuid user_id FK "RLS key"
+        text name
+        numeric rate
+    }
+
+    RECURRING {
+        uuid id PK
+        uuid document_id FK "template doc"
+        uuid user_id FK "RLS key"
+        text frequency "weekly|biweekly|monthly|quarterly|yearly"
+        date next_date
+        bool active
+    }
+
+    REMINDERS {
+        uuid id PK
+        uuid document_id FK
+        uuid user_id FK "RLS key"
+        date send_date
+        bool sent "idempotency"
+    }
+
+    REFUND_REQUESTS {
+        uuid id PK
+        uuid user_id FK "RLS key (insert/select only)"
+        text reason
+        text status "pending|approved|denied"
+    }
+
+    FEEDBACK {
+        uuid id PK
+        uuid user_id FK "RLS key (insert/select only)"
+        text type "feature|question|review"
+        int rating "1-5"
+    }

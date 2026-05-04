@@ -1,0 +1,45 @@
+%% Zennvoi — Auth Flow (sequence)
+%% Render: paste into https://mermaid.live → export SVG → save as auth-flow.svg
+
+sequenceDiagram
+    autonumber
+    actor User
+    participant FE as Client App
+    participant Auth as Managed Auth Provider
+    participant DB as Postgres + RLS
+    participant Trig as DB Trigger<br/>(handle_new_user)
+
+    Note over User,DB: --- Signup ---
+    User->>FE: Submit {email, password}
+    FE->>FE: Reject disposable email domain<br/>(client-side)
+    FE->>Auth: signUp(email, password)
+    Auth->>DB: Insert auth.users row
+    DB->>Trig: Fires on insert
+    Trig->>DB: Insert public.profiles row<br/>(id, email, full_name)
+    Auth-->>FE: Verification email pending
+    Auth->>User: Email with verify link
+    User->>Auth: Click verify link → /auth/confirm
+    Auth->>DB: Mark email_verified = true
+
+    Note over User,DB: --- Login ---
+    User->>FE: Submit credentials
+    FE->>Auth: signInWithPassword
+    Auth->>DB: Verify hash
+    Auth-->>FE: HTTP-only secure cookie
+    FE-->>User: Redirect to /dashboard
+
+    Note over User,DB: --- Authenticated DB call (typical read path) ---
+    User->>FE: Action (list invoices)
+    FE->>DB: select * from documents<br/>(session JWT, anon key)
+    DB->>DB: RLS: auth.uid() = user_id
+    DB-->>FE: Only own rows
+    FE-->>User: Render
+
+    Note over User,DB: --- Privileged action (e.g., create checkout) ---
+    User->>FE: Click "Upgrade to Pro"
+    FE->>FE: Verify origin allowlist
+    FE->>Auth: Get current session
+    Auth-->>FE: User object
+    FE->>DB: (server-side via API route) call Stripe<br/>service-role re-checks user.id
+    DB-->>FE: Checkout URL
+    FE-->>User: Redirect to Stripe Checkout
